@@ -1,0 +1,16 @@
+# Dev-only folders
+.claude/
+.cursor/
+graphify/
+graphify-out/
+ponytail/
+
+# Markdown files
+*.md
+
+# Python / env
+.env
+__pycache__/
+.venv/
+*.pyc
+.pytest_cache/
