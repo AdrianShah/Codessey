@@ -1,27 +1,20 @@
-"""Shared specialist agent invocation pattern.
-
-Every specialist agent follows the same contract:
-- Takes a CodeChunk
-- Calls Gemini 2.5 Flash with a structured JSON schema
-- Returns an AnalysisResult (always — even on failure)
-"""
+"""Shared specialist agent invocation pattern."""
 
 import asyncio
-import json
-import os
+import logging
+import re
 import secrets
 
-from google import genai
-from google.genai import types
-
+from agents.llm_client import generate_structured_analysis
 from schemas.code_chunk import CodeChunk
 from schemas.analysis_result import AnalysisResult, Finding
 
-SPECIALIST_MODEL = "gemini-2.5-flash"
-SPECIALIST_TIMEOUT_SECONDS = 8
+logger = logging.getLogger(__name__)
+
+SPECIALIST_TIMEOUT_SECONDS = 25
 SPECIALIST_TEMPERATURE = 0.1
 
-# Per-request random delimiter for prompt-injection defense (PRD Section 6.1)
+
 def _make_delimiter() -> str:
     return f"CODE_INPUT_{secrets.token_hex(8)}"
 
@@ -36,27 +29,57 @@ def _build_user_message(chunk: CodeChunk) -> str:
     )
 
 
-ANALYSIS_RESULT_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "findings": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "severity": {"type": "string", "enum": ["critical", "warning", "info"]},
-                    "line_ref": {"type": "string"},
-                    "title": {"type": "string"},
-                    "description": {"type": "string"},
-                    "suggestion": {"type": "string"},
-                },
-                "required": ["severity", "line_ref", "title", "description", "suggestion"],
-            },
-        },
-        "overall_score": {"type": "number"},
-    },
-    "required": ["findings", "overall_score"],
-}
+def _normalize_line_ref(raw: str) -> str | None:
+    """Normalize model line_ref to 'line N' or 'line N-M' format."""
+    text = raw.strip()
+    match = re.match(r"^line\s+(\d+)(?:\s*-\s*(\d+))?$", text, re.IGNORECASE)
+    if match:
+        start = match.group(1)
+        end = match.group(2)
+        return f"line {start}-{end}" if end else f"line {start}"
+    match = re.match(r"^(\d+)(?:\s*-\s*(\d+))?$", text)
+    if match:
+        start = match.group(1)
+        end = match.group(2)
+        return f"line {start}-{end}" if end else f"line {start}"
+    return None
+
+
+def _parse_findings(data: dict) -> list[Finding]:
+    findings: list[Finding] = []
+    for raw in data.get("findings", [])[:25]:
+        if not isinstance(raw, dict):
+            continue
+        line_ref = _normalize_line_ref(str(raw.get("line_ref", "")))
+        if not line_ref:
+            continue
+        raw = {**raw, "line_ref": line_ref}
+        try:
+            findings.append(Finding(**raw))
+        except Exception:
+            continue
+    return findings
+
+
+def _call_specialist_sync(
+    agent_name: str,
+    system_prompt: str,
+    chunk: CodeChunk,
+) -> AnalysisResult:
+    user_message = _build_user_message(chunk)
+    data, tokens, provider = generate_structured_analysis(
+        system_prompt, user_message, SPECIALIST_TEMPERATURE
+    )
+    findings = _parse_findings(data)
+    logger.debug("Specialist %s used provider %s", agent_name, provider)
+    return AnalysisResult(
+        agent=agent_name,  # type: ignore[arg-type]
+        chunk_id=chunk.chunk_id,
+        status="ok",
+        findings=findings,
+        overall_score=max(0.0, min(1.0, float(data.get("overall_score", 0.5)))),
+        token_usage=tokens,
+    )
 
 
 async def run_specialist(
@@ -66,12 +89,12 @@ async def run_specialist(
 ) -> AnalysisResult:
     """Run a specialist agent. Always returns an AnalysisResult — never raises."""
     try:
-        result = await asyncio.wait_for(
-            _call_gemini(agent_name, system_prompt, chunk),
+        return await asyncio.wait_for(
+            asyncio.to_thread(_call_specialist_sync, agent_name, system_prompt, chunk),
             timeout=SPECIALIST_TIMEOUT_SECONDS,
         )
-        return result
     except asyncio.TimeoutError:
+        logger.warning("Specialist %s timed out on chunk %s", agent_name, chunk.chunk_id)
         return AnalysisResult(
             agent=agent_name,  # type: ignore[arg-type]
             chunk_id=chunk.chunk_id,
@@ -80,7 +103,8 @@ async def run_specialist(
             overall_score=0.5,
             token_usage=0,
         )
-    except Exception:
+    except Exception as exc:
+        logger.warning("Specialist %s failed: %s", agent_name, exc)
         return AnalysisResult(
             agent=agent_name,  # type: ignore[arg-type]
             chunk_id=chunk.chunk_id,
@@ -89,44 +113,3 @@ async def run_specialist(
             overall_score=0.5,
             token_usage=0,
         )
-
-
-async def _call_gemini(
-    agent_name: str,
-    system_prompt: str,
-    chunk: CodeChunk,
-) -> AnalysisResult:
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-    user_message = _build_user_message(chunk)
-
-    response = await client.aio.models.generate_content(
-        model=SPECIALIST_MODEL,
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=SPECIALIST_TEMPERATURE,
-            response_mime_type="application/json",
-            response_schema=ANALYSIS_RESULT_SCHEMA,
-        ),
-    )
-
-    text = response.text
-    if not text:
-        raise ValueError("Empty response from model")
-
-    data = json.loads(text)
-    findings = []
-    for f in data.get("findings", [])[:25]:
-        try:
-            findings.append(Finding(**f))
-        except Exception:
-            continue
-
-    return AnalysisResult(
-        agent=agent_name,  # type: ignore[arg-type]
-        chunk_id=chunk.chunk_id,
-        status="ok",
-        findings=findings,
-        overall_score=max(0.0, min(1.0, float(data.get("overall_score", 0.5)))),
-        token_usage=response.usage_metadata.total_token_count if response.usage_metadata else 0,
-    )

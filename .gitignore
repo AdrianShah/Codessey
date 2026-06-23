@@ -5,8 +5,9 @@ graphify/
 graphify-out/
 ponytail/
 
-# Markdown files
+# Markdown files (keep README.md for submission)
 *.md
+!README.md
 
 # Python / env
 .env

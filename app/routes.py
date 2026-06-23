@@ -1,6 +1,6 @@
 """FastAPI routes — POST /api/review, GET /api/health."""
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
@@ -27,6 +27,16 @@ class ReviewResponse(BaseModel):
     markdown_report: str
 
 
+def _to_response(report) -> ReviewResponse:
+    return ReviewResponse(
+        grade=report.grade,
+        overall_health=report.overall_health,
+        findings_count=report.findings_count,
+        agents_unavailable=report.agents_unavailable,
+        markdown_report=report.markdown_report,
+    )
+
+
 @router.get("/health")
 async def health():
     return {"status": "ok"}
@@ -38,13 +48,9 @@ async def review_paste_endpoint(request: PasteRequest):
         report = await review_paste(request.content, request.filename)
     except IngestionError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return ReviewResponse(
-        grade=report.grade,
-        overall_health=report.overall_health,
-        findings_count=report.findings_count,
-        agents_unavailable=report.agents_unavailable,
-        markdown_report=report.markdown_report,
-    )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return _to_response(report)
 
 
 @router.post("/review/upload", response_model=ReviewResponse)
@@ -54,13 +60,9 @@ async def review_upload_endpoint(file: UploadFile = File(...)):
         report = await review_file(file.filename or "unknown.py", content)
     except IngestionError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return ReviewResponse(
-        grade=report.grade,
-        overall_health=report.overall_health,
-        findings_count=report.findings_count,
-        agents_unavailable=report.agents_unavailable,
-        markdown_report=report.markdown_report,
-    )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return _to_response(report)
 
 
 @router.post("/review/url", response_model=ReviewResponse)
@@ -69,10 +71,6 @@ async def review_url_endpoint(request: URLRequest):
         report = await review_url(request.url)
     except IngestionError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return ReviewResponse(
-        grade=report.grade,
-        overall_health=report.overall_health,
-        findings_count=report.findings_count,
-        agents_unavailable=report.agents_unavailable,
-        markdown_report=report.markdown_report,
-    )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    return _to_response(report)

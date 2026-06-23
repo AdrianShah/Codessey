@@ -12,6 +12,9 @@ from agents.ingestion import IngestionError
 
 
 def main():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
     if len(sys.argv) < 3 or sys.argv[1] != "review":
         print("Usage: python -m app.cli review <file>")
         sys.exit(1)

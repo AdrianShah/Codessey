@@ -5,23 +5,19 @@ from schemas.review_report import ReviewReport
 from schemas.analysis_result import Finding
 
 
-def render_report(report: ReviewReport) -> str:
+def render_report(report: ReviewReport, review_incomplete: bool = False) -> str:
     """Render a ReviewReport as safe Markdown."""
     sections: list[str] = []
 
-    # Header
     sections.append(f"# Code Review Report — Grade: {report.grade} ({report.overall_health}/100)\n")
 
-    # Unavailable agents
     if report.agents_unavailable:
         agents_str = ", ".join(report.agents_unavailable)
         sections.append(f"> **Note:** The following checks were unavailable: {agents_str}\n")
 
-    # Executive summary
     if report.executive_summary:
         sections.append(f"## Executive Summary\n\n{_escape(report.executive_summary)}\n")
 
-    # Findings by severity
     criticals = [f for f in report.findings if f.severity == "critical"]
     warnings = [f for f in report.findings if f.severity == "warning"]
     infos = [f for f in report.findings if f.severity == "info"]
@@ -42,7 +38,10 @@ def render_report(report: ReviewReport) -> str:
             sections.append(_render_finding(f))
 
     if not report.findings:
-        sections.append("## Results\n\nNo issues found. Code looks good!\n")
+        if review_incomplete:
+            sections.append("## Results\n\nReview incomplete — no agent results were received.\n")
+        else:
+            sections.append("## Results\n\nNo issues found. Code looks good!\n")
 
     return "\n".join(sections)
 
