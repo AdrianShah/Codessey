@@ -4,75 +4,128 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Codessey — Agentic Code Review</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e4e4e7; min-height: 100vh; }
-        .header { padding: 1.5rem 2rem; border-bottom: 1px solid #27272a; display: flex; align-items: center; gap: 1rem; }
-        .header h1 { font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .container { display: grid; grid-template-columns: 1fr 1fr; height: calc(100vh - 70px); }
-        .panel { padding: 1.5rem; overflow-y: auto; }
-        .panel-left { border-right: 1px solid #27272a; }
-        .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-        .tab { padding: 0.5rem 1rem; border-radius: 0.5rem; background: #1f2937; border: 1px solid #374151; cursor: pointer; color: #9ca3af; font-size: 0.875rem; }
-        .tab.active { background: #6366f1; color: white; border-color: #6366f1; }
-        textarea { width: 100%; height: calc(100% - 120px); background: #1a1b26; border: 1px solid #27272a; border-radius: 0.5rem; padding: 1rem; color: #e4e4e7; font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; resize: none; }
-        input[type="text"], input[type="file"] { width: 100%; padding: 0.75rem; background: #1a1b26; border: 1px solid #27272a; border-radius: 0.5rem; color: #e4e4e7; margin-bottom: 0.75rem; }
-        .btn { padding: 0.75rem 1.5rem; background: #6366f1; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: 600; }
-        .btn:hover { background: #4f46e5; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .report { font-size: 0.9rem; line-height: 1.6; }
-        .report h1 { font-size: 1.3rem; margin-bottom: 1rem; }
-        .report h2 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #a5b4fc; }
-        .report h3 { font-size: 0.95rem; margin-top: 1rem; color: #c4b5fd; }
-        .report p { margin-bottom: 0.5rem; }
-        .report hr { border: none; border-top: 1px solid #27272a; margin: 1rem 0; }
-        .report blockquote { border-left: 3px solid #f59e0b; padding-left: 1rem; color: #fbbf24; margin: 0.5rem 0; }
-        .loading { display: none; align-items: center; justify-content: center; height: 100%; }
-        .loading.active { display: flex; }
-        .spinner { width: 2rem; height: 2rem; border: 3px solid #27272a; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .error { color: #ef4444; padding: 1rem; background: #1a1b26; border-radius: 0.5rem; border: 1px solid #ef4444; }
-        .hidden { display: none; }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="header">
-        <h1>Codessey</h1>
-        <span style="color: #6b7280; font-size: 0.875rem;">Agentic Code Review</span>
-    </div>
-    <div class="container">
-        <div class="panel panel-left">
-            <div class="tabs">
-                <button class="tab active" data-tab="paste">Paste</button>
-                <button class="tab" data-tab="upload">Upload</button>
-                <button class="tab" data-tab="url">GitHub URL</button>
+    <header class="header">
+        <div class="brand">
+            <div class="logo-mark">C</div>
+            <h1>Codessey</h1>
+        </div>
+        <div class="divider"></div>
+        <span class="tagline">Agentic Code Review</span>
+        <div class="spacer"></div>
+        <a class="header-link" href="/docs" target="_blank" rel="noopener">API</a>
+    </header>
+
+    <main class="stage">
+        <!-- ===== Input view ===== -->
+        <section class="view active" id="view-input">
+            <div class="hero">
+                <h2 class="hero-title">Review code with AI agents</h2>
+                <p class="hero-subtitle">Paste, upload, or link a file. Specialized agents check logic, security, readability, and performance — then return one graded report.</p>
             </div>
-            <div id="tab-paste">
-                <textarea id="code-input" placeholder="Paste your code here..."></textarea>
-                <div style="margin-top: 0.75rem;">
-                    <button class="btn" id="review-paste-btn">Review Code</button>
+
+            <div class="composer">
+                <div class="tabs" role="tablist">
+                    <button class="tab active" data-tab="paste" role="tab">Paste</button>
+                    <button class="tab" data-tab="upload" role="tab">Upload</button>
+                    <button class="tab" data-tab="url" role="tab">GitHub URL</button>
+                </div>
+
+                <!-- Paste -->
+                <div class="tab-content" id="tab-paste">
+                    <textarea id="code-input" placeholder="Paste your code here…" spellcheck="false"></textarea>
+                    <div class="composer-bar">
+                        <span class="composer-hint" id="paste-hint">Plain code, any language</span>
+                        <div class="composer-actions">
+                            <button class="btn btn-ghost" id="clear-paste-btn" type="button">Clear</button>
+                            <button class="btn" id="review-paste-btn">Review code</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload -->
+                <div class="tab-content hidden" id="tab-upload">
+                    <label class="dropzone" id="dropzone" for="file-input">
+                        <svg class="dz-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <div class="dz-text" id="dz-text">Drag &amp; drop a file here, or <u>browse</u></div>
+                        <input type="file" id="file-input" accept=".py,.js,.ts,.java,.go,.cpp,.c,.h">
+                    </label>
+                    <div class="composer-bar">
+                        <span class="composer-hint">.py .js .ts .java .go .cpp .c .h</span>
+                        <div class="composer-actions">
+                            <button class="btn" id="review-upload-btn" disabled>Review file</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- URL -->
+                <div class="tab-content hidden" id="tab-url">
+                    <input type="text" id="url-input" placeholder="https://github.com/user/repo/blob/main/file.py" spellcheck="false">
+                    <div class="composer-bar">
+                        <span class="composer-hint">A single file on GitHub</span>
+                        <div class="composer-actions">
+                            <button class="btn" id="review-url-btn">Review URL</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="tab-upload" class="hidden">
-                <input type="file" id="file-input" accept=".py,.js,.ts,.java,.go,.cpp,.c,.h">
-                <button class="btn" id="review-upload-btn">Review File</button>
+        </section>
+
+        <!-- ===== Loading view ===== -->
+        <section class="view" id="view-loading">
+            <div class="loader">
+                <div class="spinner"></div>
+                <p class="loader-title">Analyzing code…</p>
+                <p class="loader-sub" id="loader-sub">Agents are reviewing logic, security, readability, and performance.</p>
             </div>
-            <div id="tab-url" class="hidden">
-                <input type="text" id="url-input" placeholder="https://github.com/user/repo/blob/main/file.py">
-                <button class="btn" id="review-url-btn">Review URL</button>
-            </div>
-        </div>
-        <div class="panel">
-            <div class="loading" id="loading">
-                <div style="text-align: center;">
-                    <div class="spinner"></div>
-                    <p style="margin-top: 1rem; color: #6b7280;">Analyzing code...</p>
+        </section>
+
+        <!-- ===== Results view ===== -->
+        <section class="view" id="view-results">
+            <div class="results-inner">
+                <div class="error" id="error"></div>
+
+                <div class="summary" id="summary">
+                    <div class="grade-badge" id="grade-badge">–</div>
+                    <div class="summary-meta">
+                        <div class="summary-score">
+                            <span>Health</span>
+                            <b id="health-value">0</b>/100
+                        </div>
+                        <div class="score-bar">
+                            <div class="score-bar-fill" id="score-bar-fill" style="width:0%"></div>
+                        </div>
+                        <div class="summary-stats">
+                            <div><b id="findings-count">0</b> findings</div>
+                            <div id="unavailable-stat" class="hidden"><b id="unavailable-count">0</b> checks unavailable</div>
+                        </div>
+                    </div>
+                </div>
+
+                <article class="report" id="report"></article>
+
+                <div class="results-footer">
+                    <button class="btn btn-ghost" id="review-another-btn" type="button">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                        Review another
+                    </button>
                 </div>
             </div>
-            <div class="report" id="report"></div>
-            <div class="error hidden" id="error"></div>
-        </div>
-    </div>
+        </section>
+    </main>
+
     <script src="app.js"></script>
 </body>
 </html>
