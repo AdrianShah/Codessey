@@ -31,6 +31,16 @@ function cacheEls() {
     results: document.getElementById('view-results'),
   };
 
+  els.mcCount = document.getElementById('mc-count');
+  els.mcElapsed = document.getElementById('mc-elapsed');
+  els.agents = {};
+  document.querySelectorAll('.agent').forEach((card) => {
+    els.agents[card.dataset.agent] = {
+      card,
+      status: card.querySelector('.agent-status'),
+    };
+  });
+
   els.error = document.getElementById('error');
   els.summary = document.getElementById('summary');
   els.report = document.getElementById('report');
@@ -134,9 +144,94 @@ function initReviewAnother() {
   });
 }
 
+/* ---------- Mission control animation ---------- */
+const AGENT_MESSAGES = {
+  security: [
+    'scanning injection vectors…',
+    'checking auth & secrets…',
+    'auditing unsafe calls…',
+    'validating input handling…',
+  ],
+  logic: [
+    'scanning control flow…',
+    'tracing edge cases…',
+    'checking off-by-one…',
+    'verifying branch logic…',
+  ],
+  readability: [
+    'measuring cyclomatic complexity…',
+    'reviewing naming clarity…',
+    'inspecting structure…',
+    'scanning for dead code…',
+  ],
+  performance: [
+    'profiling algorithmic complexity…',
+    'inspecting hot loops…',
+    'looking for N+1 patterns…',
+    'measuring allocations…',
+  ],
+};
+
+const mission = { timers: [], start: 0, raf: 0 };
+
+function startMission() {
+  stopMission();
+  mission.start = performance.now();
+
+  Object.values(els.agents).forEach((a) => {
+    a.card.classList.remove('done');
+    a.msgIndex = 0;
+    a.status.textContent = AGENT_MESSAGES[a.card.dataset.agent][0];
+  });
+  els.mcCount.textContent = '0';
+
+  const tick = () => {
+    const elapsed = (performance.now() - mission.start) / 1000;
+    els.mcElapsed.textContent = elapsed.toFixed(1);
+    mission.raf = requestAnimationFrame(tick);
+  };
+  mission.raf = requestAnimationFrame(tick);
+
+  Object.values(els.agents).forEach((a) => {
+    const name = a.card.dataset.agent;
+    const pool = AGENT_MESSAGES[name];
+    const timer = setInterval(() => {
+      if (a.card.classList.contains('done')) return;
+      a.msgIndex = (a.msgIndex + 1) % pool.length;
+      a.status.textContent = pool[a.msgIndex];
+    }, 1500 + Math.random() * 900);
+    mission.timers.push(timer);
+  });
+
+  // Mark up to 3 agents "complete" while we wait for the backend.
+  const order = ['logic', 'performance', 'security'];
+  let done = 0;
+  order.forEach((name, i) => {
+    const t = setTimeout(() => {
+      const a = els.agents[name];
+      if (!a) return;
+      a.card.classList.add('done');
+      a.status.textContent = 'complete';
+      done += 1;
+      els.mcCount.textContent = String(done);
+    }, 1400 + i * 1300 + Math.random() * 600);
+    mission.timers.push(t);
+  });
+}
+
+function stopMission() {
+  cancelAnimationFrame(mission.raf);
+  mission.timers.forEach((t) => {
+    clearInterval(t);
+    clearTimeout(t);
+  });
+  mission.timers = [];
+}
+
 /* ---------- Review request ---------- */
 async function runReview(endpoint, body, isFormData = false) {
   showView('loading');
+  startMission();
 
   try {
     const options = isFormData
@@ -157,6 +252,8 @@ async function runReview(endpoint, body, isFormData = false) {
     renderResults(await response.json());
   } catch (e) {
     showError(e.message);
+  } finally {
+    stopMission();
   }
 }
 

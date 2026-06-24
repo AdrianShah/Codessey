@@ -5,9 +5,9 @@ graphify/
 graphify-out/
 ponytail/
 
-# Markdown files (keep README.md for submission)
+# Markdown files
 *.md
-!README.md
+README.md 
 
 # Python / env
 .env
@@ -15,4 +15,7 @@ __pycache__/
 .venv/
 *.pyc
 .pytest_cache/
+
+
+#history
 .history/
