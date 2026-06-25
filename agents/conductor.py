@@ -18,7 +18,7 @@ ALL_SPECIALISTS = {"logic", "security", "readability", "performance"}
 async def synthesize_report(results: list[AnalysisResult]) -> ReviewReport:
     """Combine specialist results into a final ReviewReport."""
     available = [r for r in results if r.status == "ok"]
-    unavailable_agents = [r.agent for r in results if r.status != "ok"]
+    unavailable_agents = list(dict.fromkeys(r.agent for r in results if r.status != "ok"))
 
     # All agents failed — do not present a false perfect score.
     if not available and results:
@@ -30,7 +30,7 @@ async def synthesize_report(results: list[AnalysisResult]) -> ReviewReport:
             agents_unavailable=unavailable_agents,
             executive_summary=(
                 "Review could not be completed — all specialist agents failed. "
-                "Check GEMINI_API_KEY and/or GROQ_API_KEY in your .env file."
+                "Check GEMINI_API_KEY in your .env file."
             ),
         )
         report.markdown_report = redact_secrets(
@@ -92,7 +92,7 @@ async def _generate_summary(
     if unavailable_agents and set(unavailable_agents) >= ALL_SPECIALISTS:
         return (
             "Review could not be completed — all specialist agents failed. "
-            "Check GEMINI_API_KEY and/or GROQ_API_KEY in your .env file."
+            "Check GEMINI_API_KEY in your .env file."
         )
     try:
         return await asyncio.wait_for(

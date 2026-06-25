@@ -37,7 +37,6 @@ flowchart TD
 |---|---|
 | ADK 2.2 Workflow with `JoinNode` | Structural match for parallel specialist dispatch; provides clean fan-out/fan-in semantics |
 | `gemini-2.5-flash` for specialists | Fast + cheap for parallel calls; 25s timeout per agent |
-| Groq fallback (`llama-3.1-8b-instant`) | Automatic failover when Gemini quota/billing fails |
 | `gemini-2.5-pro` for Conductor synthesis only | Higher quality narrative summarization; 5s budget |
 | Deterministic scoring formula | Injection-immune grades; auditable, not LLM-dependent |
 | `asyncio.gather` fallback | If ADK runtime overhead exceeds 15s budget, drop to plain async parallelism |
@@ -51,7 +50,6 @@ flowchart TD
 - **Secret redaction** — detected API keys/credentials masked in reports
 - **500-line code chunking** with 20-line overlap and cross-chunk deduplication
 - **Deterministic health scoring** — `critical×15 + warning×5 + info×1` penalty formula
-- **Groq fallback** — uses `GROQ_API_KEY` when Gemini is unavailable
 - **CLI fallback** — `python -m app.cli review <file>` for demo-day reliability
 
 ## Setup
@@ -65,7 +63,7 @@ pip install -r requirements.txt
 
 # 2. Set your API key
 cp .env.example .env
-# Edit .env — set GEMINI_API_KEY and/or GROQ_API_KEY (Groq works as fallback)
+# Edit .env — set GEMINI_API_KEY
 
 # 3. Run the app
 python main.py
@@ -107,7 +105,7 @@ tests/          — Unit + integration tests with sample files
 ## Tech Stack
 
 - **Orchestration:** Google ADK 2.2.0
-- **Models:** Gemini 2.5 Flash (specialists), Gemini 2.5 Pro (conductor), Groq Llama 3.1 8B (fallback)
+- **Models:** Gemini 2.5 Flash (specialists), Gemini 2.5 Pro (conductor)
 - **Backend:** FastAPI + Uvicorn
 - **Frontend:** Vanilla HTML/JS (no framework)
 - **Validation:** Pydantic v2

@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Codessey — Agentic Code Review</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <a href="/" class="brand" id="brand-link">
+        <div class="logo-mark">C</div>
+        <h1>Codessey</h1>
+      </a>
+      <div class="divider"></div>
+      <span class="tagline">Agentic Code Review</span>
+    </header>
+
+    <main class="stage">
+      <!-- ===== Input view ===== -->
+      <section class="view active" id="view-input">
+        <div class="hero">
+          <h2 class="hero-title">Four agents. One verdict.</h2>
+          <p class="hero-subtitle">
+            Paste, upload, or link a file. Specialized agents check logic,
+            security, readability, and performance — then return one graded
+            report.
+          </p>
+        </div>
+
+        <div class="composer">
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-tab="paste" role="tab">
+              Paste
+            </button>
+            <button class="tab" data-tab="upload" role="tab">Upload</button>
+            <button class="tab" data-tab="url" role="tab">GitHub URL</button>
+          </div>
+
+          <!-- Paste -->
+          <div class="tab-content" id="tab-paste">
+            <textarea
+              id="code-input"
+              placeholder="Paste your code here…"
+              spellcheck="false"
+            ></textarea>
+            <div class="composer-bar">
+              <span class="composer-hint" id="paste-hint"
+                >Plain code, any language</span
+              >
+              <div class="composer-actions">
+                <button
+                  class="btn btn-ghost"
+                  id="clear-paste-btn"
+                  type="button"
+                >
+                  Clear
+                </button>
+                <button class="btn" id="review-paste-btn">Review code</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload -->
+          <div class="tab-content hidden" id="tab-upload">
+            <label class="dropzone" id="dropzone" for="file-input">
+              <svg
+                class="dz-icon"
+                width="28"
+                height="28"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              <div class="dz-text" id="dz-text">
+                Drag &amp; drop a file here, or <u>browse</u>
+              </div>
+              <input
+                type="file"
+                id="file-input"
+                accept=".py,.js,.ts,.java,.go,.cpp,.c,.h"
+              />
+            </label>
+            <div class="composer-bar">
+              <span class="composer-hint"
+                >.py .js .ts .java .go .cpp .c .h</span
+              >
+              <div class="composer-actions">
+                <button class="btn" id="review-upload-btn" disabled>
+                  Review file
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- URL -->
+          <div class="tab-content hidden" id="tab-url">
+            <input
+              type="text"
+              id="url-input"
+              placeholder="https://github.com/user/repo/blob/main/file.py"
+              spellcheck="false"
+            />
+            <div class="composer-bar">
+              <span class="composer-hint">A single file on GitHub</span>
+              <div class="composer-actions">
+                <button class="btn" id="review-url-btn">Review URL</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Loading view (mission control) ===== -->
+      <section class="view" id="view-loading">
+        <div class="mission">
+          <p class="mc-label mc-label-top">Live analysis — mission control</p>
+
+          <div class="mc-grid">
+            <!-- connectors (behind nodes) -->
+            <div class="mc-line vertical"></div>
+            <div class="mc-line horizontal"></div>
+
+            <!-- Security (top) -->
+            <div
+              class="agent agent-top"
+              data-agent="security"
+              style="--delay: 0s"
+            >
+              <div class="agent-head">
+                <span class="agent-icon">
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </span>
+                <span class="agent-name">Security</span>
+                <span class="agent-dot"></span>
+              </div>
+              <p class="agent-status">initializing…</p>
+            </div>
+
+            <!-- Logic (left) -->
+            <div
+              class="agent agent-left"
+              data-agent="logic"
+              style="--delay: 0.4s"
+            >
+              <div class="agent-head">
+                <span class="agent-icon">
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="16 18 22 12 16 6" />
+                    <polyline points="8 6 2 12 8 18" />
+                  </svg>
+                </span>
+                <span class="agent-name">Logic &amp; Correctness</span>
+                <span class="agent-dot"></span>
+              </div>
+              <p class="agent-status">initializing…</p>
+            </div>
+
+            <!-- Conductor (center) -->
+            <div class="conductor">
+              <div class="conductor-orb">
+                <span class="conductor-name">Conductor</span>
+                <span class="conductor-count"><b id="mc-count">0</b>/4</span>
+              </div>
+            </div>
+
+            <!-- Readability (right) -->
+            <div
+              class="agent agent-right"
+              data-agent="readability"
+              style="--delay: 0.6s"
+            >
+              <div class="agent-head">
+                <span class="agent-icon">
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                  </svg>
+                </span>
+                <span class="agent-name">Readability</span>
+                <span class="agent-dot"></span>
+              </div>
+              <p class="agent-status">initializing…</p>
+            </div>
+
+            <!-- Performance (bottom) -->
+            <div
+              class="agent agent-bottom"
+              data-agent="performance"
+              style="--delay: 0.2s"
+            >
+              <div class="agent-head">
+                <span class="agent-icon">
+                  <svg
+                    width="15"
+                    height="15"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg>
+                </span>
+                <span class="agent-name">Performance</span>
+                <span class="agent-dot"></span>
+              </div>
+              <p class="agent-status">initializing…</p>
+            </div>
+          </div>
+
+          <div class="mc-footer">
+            <p class="mc-label">Agents active — telemetry streaming…</p>
+            <div class="mc-elapsed">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <polyline points="12 7 12 12 15 14" />
+              </svg>
+              <b id="mc-elapsed">0.0</b> s elapsed
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Results view ===== -->
+      <section class="view" id="view-results">
+        <div class="results-inner">
+          <div class="error" id="error"></div>
+
+          <div class="summary" id="summary">
+            <div class="grade-badge" id="grade-badge">–</div>
+            <div class="summary-meta">
+              <div class="summary-score">
+                <span>Health</span>
+                <b id="health-value">0</b>/100
+              </div>
+              <div class="score-bar">
+                <div
+                  class="score-bar-fill"
+                  id="score-bar-fill"
+                  style="width: 0%"
+                ></div>
+              </div>
+              <div class="summary-stats">
+                <div><b id="findings-count">0</b> findings</div>
+                <div id="unavailable-stat" class="hidden">
+                  <b id="unavailable-count">0</b> checks unavailable
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <article class="report" id="report"></article>
+
+          <div class="results-footer">
+            <button class="btn btn-ghost" id="review-another-btn" type="button">
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              Review another
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

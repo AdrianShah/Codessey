@@ -9,7 +9,8 @@ Reference: https://google.github.io/adk-docs/workflows/graph-routes/
 """
 
 import asyncio
-from typing import Any
+import os
+from typing import Any, Awaitable, Callable
 
 from pydantic import BaseModel
 
@@ -114,17 +115,45 @@ review_workflow = Workflow(
 
 # --- Simple asyncio.gather fallback (used by CLI, tests, and if ADK overhead exceeds budget) ---
 
-async def run_review_pipeline(chunks: list[CodeChunk]) -> ReviewReport:
-    """Run the full review pipeline using plain asyncio.gather for parallel dispatch."""
-    all_results: list[AnalysisResult] = []
+SPECIALIST_RUNNERS: dict[str, Callable[[CodeChunk], Awaitable[AnalysisResult]]] = {
+    "logic": run_logic_agent,
+    "security": run_security_agent,
+    "readability": run_readability_agent,
+    "performance": run_performance_agent,
+}
 
-    for chunk in chunks:
-        results = await asyncio.gather(
+SPECIALIST_RETRY_ROUNDS = int(os.environ.get("SPECIALIST_RETRY_ROUNDS", "2"))
+SPECIALIST_RETRY_DELAY_SECONDS = float(os.environ.get("SPECIALIST_RETRY_DELAY", "3"))
+
+
+async def _run_chunk_with_retries(chunk: CodeChunk) -> list[AnalysisResult]:
+    """Parallel first pass; sequentially retry only failed specialists."""
+    results: list[AnalysisResult] = list(
+        await asyncio.gather(
             run_logic_agent(chunk),
             run_security_agent(chunk),
             run_readability_agent(chunk),
             run_performance_agent(chunk),
         )
-        all_results.extend(results)
+    )
+
+    for _ in range(SPECIALIST_RETRY_ROUNDS):
+        failed_indices = [i for i, r in enumerate(results) if r.status != "ok"]
+        if not failed_indices:
+            break
+        for idx in failed_indices:
+            agent = results[idx].agent
+            await asyncio.sleep(SPECIALIST_RETRY_DELAY_SECONDS)
+            results[idx] = await SPECIALIST_RUNNERS[agent](chunk)
+
+    return results
+
+
+async def run_review_pipeline(chunks: list[CodeChunk]) -> ReviewReport:
+    """Run the full review pipeline using plain asyncio.gather for parallel dispatch."""
+    all_results: list[AnalysisResult] = []
+
+    for chunk in chunks:
+        all_results.extend(await _run_chunk_with_retries(chunk))
 
     return await synthesize_report(all_results)
